@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-app-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: test-app-web
+  template:
+    metadata:
+      labels:
+        app: test-app-web
+    spec:
+      containers:
+      - name: test-app-web
+        image: eltori31/test-app-web:latest
+        ports:
+        - containerPort: 3000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: test-app-web-service
+spec:
+  selector:
+    app: test-app-web
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 3000
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: test-app-web-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  rules:
+  - host: test-app.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: test-app-web-service
+            port:
+              number: 80
