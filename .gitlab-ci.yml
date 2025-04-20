@@ -1,0 +1,34 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHORT_SHA
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker build -t $IMAGE_TAG .
+    - docker push $IMAGE_TAG
+
+deploy:
+  stage: deploy
+  image:
+    name: bitnami/kubectl:latest
+    entrypoint: [""]
+  script:
+    - kubectl config set-cluster k3s-cluster --server=$K3S_SERVER_URL --insecure-skip-tls-verify=true
+    - kubectl config set-credentials gitlab-ci --token=$K3S_TOKEN
+    - kubectl config set-context k3s-context --cluster=k3s-cluster --user=gitlab-ci --namespace=default
+    - kubectl config use-context k3s-context
+    - kubectl set image deployment/test-app-web test-app-web=$IMAGE_TAG
+  environment:
+    name: production
+    kubernetes:
+      namespace: default
+  only:
+    - main
